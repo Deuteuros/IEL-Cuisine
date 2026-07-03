@@ -17,8 +17,8 @@ Application Flutter pour l'**affichage des commandes en cuisine**. Interface Kan
 
 ## Projets associés
 
-- [IEL - Serveur](https://github.com/DEUTEUTOS/IEL-Serveur) — Prise de commandes en salle
-- [IEL - Expense Tracker](https://github.com/DEUTEUTOS/IEL-Expense-Tracker) — Suivi des dépenses
+- [IEL - Serveur](https://github.com/Deuteuros/IEL-Serveur) — Prise de commandes en salle
+- [IEL - Expense Tracker](https://github.com/Deuteuros/IEL-Expense-Tracker) — Suivi des dépenses
 
 ---
 
