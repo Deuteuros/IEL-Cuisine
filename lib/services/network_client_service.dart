@@ -1,20 +1,38 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:nsd/nsd.dart' as nsd;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../models/order.dart';
 
-enum ConnectionStatus { disconnected, connecting, connected, error }
+enum ConnectionStatus { disconnected, connecting, connected, error, searching }
+
+class DiscoveredServer {
+  final String name;
+  final String ip;
+  final int port;
+
+  const DiscoveredServer({
+    required this.name,
+    required this.ip,
+    required this.port,
+  });
+}
 
 class NetworkClientService extends ChangeNotifier {
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
+  nsd.Discovery? _discovery;
+  Timer? _reconnectTimer;
+  int _reconnectAttempt = 0;
+  static const int _maxReconnectAttempts = 10;
 
   ConnectionStatus _status = ConnectionStatus.disconnected;
   String? _serverUrl;
   String? _errorMessage;
+  final List<DiscoveredServer> _discoveredServers = [];
 
-  // Callbacks pour notifier les providers
   final void Function(OrderModel order)? onOrderCreated;
   final void Function(String orderId, OrderStatus status)? onStatusUpdated;
   final void Function(String orderId)? onOrderPaid;
@@ -29,11 +47,85 @@ class NetworkClientService extends ChangeNotifier {
   String? get serverUrl => _serverUrl;
   String? get errorMessage => _errorMessage;
   bool get isConnected => _status == ConnectionStatus.connected;
+  List<DiscoveredServer> get discoveredServers => List.unmodifiable(_discoveredServers);
+
+  Future<void> startMdnsDiscovery() async {
+    if (_discovery != null) return;
+    _status = ConnectionStatus.searching;
+    notifyListeners();
+
+    try {
+      _discovery = await nsd.startDiscovery(
+        '_caissecash._tcp',
+        autoResolve: true,
+        ipLookupType: nsd.IpLookupType.v4,
+      );
+
+      _discovery!.addServiceListener(_onServiceDiscovered);
+
+      for (final service in _discovery!.services) {
+        _addDiscoveredService(service);
+      }
+
+      _discovery!.addListener(_onDiscoveryChanged);
+    } catch (e) {
+      debugPrint('mDNS discovery error: $e');
+    }
+  }
+
+  void _onDiscoveryChanged() {
+    for (final service in _discovery!.services) {
+      _addDiscoveredService(service);
+    }
+  }
+
+  void _onServiceDiscovered(nsd.Service service, nsd.ServiceStatus status) {
+    if (status == nsd.ServiceStatus.found) {
+      _addDiscoveredService(service);
+    }
+  }
+
+  void _addDiscoveredService(nsd.Service service) {
+    final ip = service.addresses
+        ?.where((a) => a.type == InternetAddressType.IPv4)
+        .firstOrNull
+        ?.address;
+
+    if (ip == null || service.port == null) return;
+
+    final server = DiscoveredServer(
+      name: service.name ?? 'Serveur',
+      ip: ip,
+      port: service.port!,
+    );
+
+    final alreadyKnown = _discoveredServers.any(
+      (s) => s.ip == server.ip && s.port == server.port,
+    );
+    if (!alreadyKnown) {
+      _discoveredServers.add(server);
+      notifyListeners();
+    }
+
+    if (_status != ConnectionStatus.connected && _status != ConnectionStatus.connecting) {
+      connect(server.ip, port: server.port);
+    }
+  }
+
+  Future<void> stopMdnsDiscovery() async {
+    if (_discovery != null) {
+      await nsd.stopDiscovery(_discovery!);
+      _discovery = null;
+    }
+    if (_status == ConnectionStatus.searching) {
+      _status = ConnectionStatus.disconnected;
+      notifyListeners();
+    }
+  }
 
   Future<void> connect(String ipAddress, {int port = 8080}) async {
-    if (_status == ConnectionStatus.connected || _status == ConnectionStatus.connecting) {
-      await disconnect();
-    }
+    if (_status == ConnectionStatus.connected) return;
+    _cancelReconnect();
 
     final url = 'ws://$ipAddress:$port/ws';
     _serverUrl = url;
@@ -46,6 +138,7 @@ class NetworkClientService extends ChangeNotifier {
       await _channel!.ready;
 
       _status = ConnectionStatus.connected;
+      _reconnectAttempt = 0;
       notifyListeners();
 
       _subscription = _channel!.stream.listen(
@@ -57,10 +150,39 @@ class NetworkClientService extends ChangeNotifier {
       _status = ConnectionStatus.error;
       _errorMessage = 'Connexion échouée : $e';
       notifyListeners();
+      _scheduleReconnect();
     }
   }
 
+  void _scheduleReconnect() {
+    if (_reconnectAttempt >= _maxReconnectAttempts) return;
+    _cancelReconnect();
+
+    final delay = Duration(
+      seconds: (_reconnectAttempt + 1) * 2,
+    );
+    _reconnectAttempt++;
+
+    debugPrint('Reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempt)');
+    _status = ConnectionStatus.searching;
+    notifyListeners();
+
+    _reconnectTimer = Timer(delay, () {
+      if (_discoveredServers.isNotEmpty) {
+        final server = _discoveredServers.first;
+        connect(server.ip, port: server.port);
+      }
+    });
+  }
+
+  void _cancelReconnect() {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+  }
+
   Future<void> disconnect() async {
+    _cancelReconnect();
+    _reconnectAttempt = 0;
     await _subscription?.cancel();
     _subscription = null;
     await _channel?.sink.close();
@@ -79,7 +201,6 @@ class NetworkClientService extends ChangeNotifier {
     }
   }
 
-  /// Sends UPDATE_STATUS when the kitchen drags an order to a new column.
   void sendUpdateStatus(String orderId, OrderStatus status) {
     final String statusStr;
     switch (status) {
@@ -122,7 +243,6 @@ class NetworkClientService extends ChangeNotifier {
         case 'ORDER_PAID':
           _handleOrderPaid(payload);
           break;
-        // SYNC_MENU is ignored by the kitchen app
       }
     } catch (e) {
       debugPrint('Error parsing message: $e');
@@ -198,17 +318,30 @@ class NetworkClientService extends ChangeNotifier {
     _status = ConnectionStatus.disconnected;
     _errorMessage = 'Connexion perdue. Reconnexion…';
     notifyListeners();
+    _scheduleReconnect();
   }
 
   void _handleError(Object error) {
     _status = ConnectionStatus.error;
     _errorMessage = 'Erreur réseau : $error';
     notifyListeners();
+    _scheduleReconnect();
   }
 
   @override
   void dispose() {
-    disconnect();
+    _cancelReconnect();
+    _reconnectAttempt = 0;
+    _subscription?.cancel();
+    _subscription = null;
+    _channel?.sink.close();
+    _channel = null;
+    _status = ConnectionStatus.disconnected;
+    if (_discovery != null) {
+      _discovery!.removeListener(_onDiscoveryChanged);
+      _discovery!.removeServiceListener(_onServiceDiscovered);
+      _discovery = null;
+    }
     super.dispose();
   }
 }

@@ -30,7 +30,7 @@ class KanbanView extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFE64A19).withOpacity(0.2),
+                color: const Color(0xFFE64A19).withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
@@ -50,7 +50,6 @@ class KanbanView extends ConsumerWidget {
           ],
         ),
         actions: [
-          // Network status icon
           Consumer(
             builder: (context, ref, child) {
               final network = ref.watch(networkClientProvider);
@@ -62,6 +61,7 @@ class KanbanView extends ConsumerWidget {
                   statusIcon = Icons.wifi;
                   break;
                 case ConnectionStatus.connecting:
+                case ConnectionStatus.searching:
                   statusColor = Colors.orange;
                   statusIcon = Icons.wifi_find;
                   break;
@@ -116,6 +116,10 @@ class KanbanView extends ConsumerWidget {
               orders: aFaireOrders,
               status: OrderStatus.aFaire,
               headerColor: const Color(0xFFE64A19),
+              swipeTarget: OrderStatus.enCours,
+              swipeLabel: 'Démarrer',
+              swipeIcon: Icons.play_arrow,
+              swipeColor: const Color(0xFF0288D1),
             ),
           ),
           Expanded(
@@ -124,6 +128,10 @@ class KanbanView extends ConsumerWidget {
               orders: enCoursOrders,
               status: OrderStatus.enCours,
               headerColor: const Color(0xFF0288D1),
+              swipeTarget: OrderStatus.fait,
+              swipeLabel: 'Prêt',
+              swipeIcon: Icons.check,
+              swipeColor: const Color(0xFF388E3C),
             ),
           ),
           Expanded(
@@ -132,6 +140,10 @@ class KanbanView extends ConsumerWidget {
               orders: faitOrders,
               status: OrderStatus.fait,
               headerColor: const Color(0xFF388E3C),
+              swipeTarget: null,
+              swipeLabel: 'Archiver',
+              swipeIcon: Icons.archive,
+              swipeColor: Colors.grey,
             ),
           ),
         ],
@@ -145,12 +157,20 @@ class _KanbanColumn extends ConsumerStatefulWidget {
   final List<OrderModel> orders;
   final OrderStatus status;
   final Color headerColor;
+  final OrderStatus? swipeTarget;
+  final String swipeLabel;
+  final IconData swipeIcon;
+  final Color swipeColor;
 
   const _KanbanColumn({
     required this.title,
     required this.orders,
     required this.status,
     required this.headerColor,
+    required this.swipeTarget,
+    required this.swipeLabel,
+    required this.swipeIcon,
+    required this.swipeColor,
   });
 
   @override
@@ -163,13 +183,14 @@ class _KanbanColumnState extends ConsumerState<_KanbanColumn> {
   @override
   Widget build(BuildContext context) {
     return DragTarget<OrderModel>(
-      onWillAccept: (data) => data != null && data.status != widget.status,
-      onAccept: (data) {
-        ref.read(orderProvider.notifier).moveOrder(data.id, widget.status);
-        // Send UPDATE_STATUS via WebSocket if connected
+      onWillAcceptWithDetails: (details) =>
+          details.data.status != widget.status,
+      onAcceptWithDetails: (details) {
+        final order = details.data;
+        ref.read(orderProvider.notifier).moveOrder(order.id, widget.status);
         final network = ref.read(networkClientProvider);
         if (network.isConnected) {
-          network.sendUpdateStatus(data.id, widget.status);
+          network.sendUpdateStatus(order.id, widget.status);
         }
         setState(() {
           _isDraggingOver = false;
@@ -180,7 +201,7 @@ class _KanbanColumnState extends ConsumerState<_KanbanColumn> {
           _isDraggingOver = false;
         });
       },
-      onMove: (data) {
+      onMove: (details) {
         setState(() {
           _isDraggingOver = true;
         });
@@ -191,7 +212,7 @@ class _KanbanColumnState extends ConsumerState<_KanbanColumn> {
           margin: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: _isDraggingOver
-                ? widget.headerColor.withOpacity(0.08)
+                ? widget.headerColor.withValues(alpha: 0.08)
                 : const Color(0xFF16161E),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
@@ -203,7 +224,6 @@ class _KanbanColumnState extends ConsumerState<_KanbanColumn> {
           ),
           child: Column(
             children: [
-              // Column Header
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -219,7 +239,7 @@ class _KanbanColumnState extends ConsumerState<_KanbanColumn> {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: widget.headerColor.withOpacity(0.6),
+                                color: widget.headerColor.withValues(alpha: 0.6),
                                 blurRadius: 8,
                                 spreadRadius: 1,
                               ),
@@ -241,7 +261,7 @@ class _KanbanColumnState extends ConsumerState<_KanbanColumn> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: widget.headerColor.withOpacity(0.2),
+                        color: widget.headerColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -256,14 +276,20 @@ class _KanbanColumnState extends ConsumerState<_KanbanColumn> {
                 ),
               ),
               const Divider(color: Color(0xFF2C2C35), height: 1),
-              // List of Orders
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.all(12),
                   itemCount: widget.orders.length,
                   itemBuilder: (context, index) {
                     final order = widget.orders[index];
-                    return _OrderCard(order: order);
+                    return _OrderCard(
+                      order: order,
+                      columnStatus: widget.status,
+                      swipeTarget: widget.swipeTarget,
+                      swipeLabel: widget.swipeLabel,
+                      swipeIcon: widget.swipeIcon,
+                      swipeColor: widget.swipeColor,
+                    );
                   },
                 ),
               ),
@@ -275,22 +301,83 @@ class _KanbanColumnState extends ConsumerState<_KanbanColumn> {
   }
 }
 
-class _OrderCard extends StatelessWidget {
+class _OrderCard extends ConsumerStatefulWidget {
   final OrderModel order;
+  final OrderStatus columnStatus;
+  final OrderStatus? swipeTarget;
+  final String swipeLabel;
+  final IconData swipeIcon;
+  final Color swipeColor;
 
-  const _OrderCard({required this.order});
+  const _OrderCard({
+    required this.order,
+    required this.columnStatus,
+    required this.swipeTarget,
+    required this.swipeLabel,
+    required this.swipeIcon,
+    required this.swipeColor,
+  });
+
+  @override
+  ConsumerState<_OrderCard> createState() => _OrderCardState();
+}
+
+class _OrderCardState extends ConsumerState<_OrderCard> {
+  late Timer _timer;
+  late Duration _elapsed;
+
+  @override
+  void initState() {
+    super.initState();
+    _elapsed = widget.order.elapsed;
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {
+          _elapsed = widget.order.elapsed;
+        });
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(_OrderCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.order.id != widget.order.id) {
+      _elapsed = widget.order.elapsed;
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes;
+    final seconds = d.inSeconds % 60;
+    return '${minutes}m ${seconds}s';
+  }
+
+  Color _getTimerColor(Duration d) {
+    if (d.inMinutes > 20) return const Color(0xFFD32F2F);
+    if (d.inMinutes > 10) return const Color(0xFFF57C00);
+    return const Color(0xFF388E3C);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final cardWidget = Container(
+    final timerColor = _getTimerColor(_elapsed);
+
+    final cardContent = Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => _showOrderDetails(context, order),
+          onTap: () => _showOrderDetails(context, widget.order),
           borderRadius: BorderRadius.circular(12),
           child: Ink(
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -302,43 +389,94 @@ class _OrderCard extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: const Color(0xFF353545),
-                width: 1,
+                color: timerColor.withValues(alpha: 0.5),
+                width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 6,
+                  color: timerColor.withValues(alpha: 0.15),
+                  blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
               ],
             ),
-            child: Center(
-              child: Text(
-                order.tableNumber,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 0.5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.table_restaurant,
+                            size: 18,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              widget.order.tableNumber,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.outfit(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: timerColor.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: timerColor.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: timerColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatDuration(_elapsed),
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: timerColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
+                const SizedBox(height: 12),
+                ...widget.order.items.map(_buildItemRow),
+              ],
             ),
           ),
         ),
       ),
     );
 
-    return Draggable<OrderModel>(
-      data: order,
+    final draggable = Draggable<OrderModel>(
+      data: widget.order,
       feedback: Transform.rotate(
         angle: 0.05,
         child: Material(
           color: Colors.transparent,
           child: Container(
             width: MediaQuery.of(context).size.width / 3.5,
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: const Color(0xFF2C2C3C),
               borderRadius: BorderRadius.circular(12),
@@ -348,31 +486,189 @@ class _OrderCard extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
+                  color: Colors.black.withValues(alpha: 0.4),
                   blurRadius: 10,
                   offset: const Offset(0, 5),
                 ),
               ],
             ),
-            child: Center(
-              child: Text(
-                order.tableNumber,
-                style: GoogleFonts.outfit(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  decoration: TextDecoration.none,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.order.tableNumber,
+                  style: GoogleFonts.outfit(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    decoration: TextDecoration.none,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 8),
+                ...widget.order.items.take(3).map((item) => Text(
+                      '${item.quantity}x ${item.name}',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        decoration: TextDecoration.none,
+                        fontSize: 13,
+                      ),
+                    )),
+              ],
             ),
           ),
         ),
       ),
       childWhenDragging: Opacity(
         opacity: 0.3,
-        child: cardWidget,
+        child: cardContent,
       ),
-      child: cardWidget,
+      child: _buildDismissible(cardContent),
+    );
+
+    return draggable;
+  }
+
+  Widget _buildDismissible(Widget child) {
+    if (widget.swipeTarget != null) {
+      return Dismissible(
+        key: ValueKey('swipe_${widget.order.id}'),
+        direction: DismissDirection.horizontal,
+        onDismissed: (_) {
+          ref.read(orderProvider.notifier).moveOrder(
+                widget.order.id,
+                widget.swipeTarget!,
+              );
+          final network = ref.read(networkClientProvider);
+          if (network.isConnected) {
+            network.sendUpdateStatus(widget.order.id, widget.swipeTarget!);
+          }
+        },
+        background: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: widget.swipeColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.only(left: 24),
+          child: Icon(widget.swipeIcon, color: Colors.white, size: 32),
+        ),
+        secondaryBackground: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: widget.swipeColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 24),
+          child: Icon(widget.swipeIcon, color: Colors.white, size: 32),
+        ),
+        child: child,
+      );
+    }
+
+    return Dismissible(
+      key: ValueKey('swipe_archive_${widget.order.id}'),
+      direction: DismissDirection.horizontal,
+      onDismissed: (_) {
+        ref.read(orderProvider.notifier).removeOrder(widget.order.id);
+      },
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade700,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.only(left: 24),
+        child: const Icon(Icons.archive, color: Colors.white, size: 32),
+      ),
+      secondaryBackground: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade700,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 24),
+        child: const Icon(Icons.archive, color: Colors.white, size: 32),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildItemRow(OrderItem item) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF5722),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '${item.quantity}',
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  item.name,
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (item.notes != null && item.notes!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF5722).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: const Color(0xFFFF5722).withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Color(0xFFFF5722),
+                    size: 12,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    item.notes!,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                      color: const Color(0xFFFF5722),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -381,7 +677,7 @@ class _OrderCard extends StatelessWidget {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Mombamomba ny kaomandy',
-      barrierColor: Colors.black.withOpacity(0.7),
+      barrierColor: Colors.black.withValues(alpha: 0.7),
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (context, anim1, anim2) {
         return _OrderDetailsDialog(order: order);
@@ -438,9 +734,9 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
   }
 
   Color _getTimerColor(Duration d) {
-    if (d.inMinutes > 20) return const Color(0xFFD32F2F); // Red
-    if (d.inMinutes > 10) return const Color(0xFFF57C00); // Orange
-    return const Color(0xFF388E3C); // Green
+    if (d.inMinutes > 20) return const Color(0xFFD32F2F);
+    if (d.inMinutes > 10) return const Color(0xFFF57C00);
+    return const Color(0xFF388E3C);
   }
 
   @override
@@ -458,7 +754,7 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -475,22 +771,31 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Title and status
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          widget.order.tableNumber,
-                          style: GoogleFonts.outfit(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.table_restaurant,
+                              color: Colors.grey.shade400,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              widget.order.tableNumber,
+                              style: GoogleFonts.outfit(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: _getTimerColor(_elapsed).withOpacity(0.2),
+                            color: _getTimerColor(_elapsed).withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: _getTimerColor(_elapsed),
@@ -529,7 +834,6 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
                     const SizedBox(height: 16),
                     const Divider(color: Color(0xFF353545), height: 1),
                     const SizedBox(height: 16),
-                    // Item List
                     Expanded(
                       child: ListView.builder(
                         itemCount: widget.order.items.length,
@@ -579,10 +883,10 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
                                   Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFFF5722).withOpacity(0.08),
+                                      color: const Color(0xFFFF5722).withValues(alpha: 0.08),
                                       borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
-                                        color: const Color(0xFFFF5722).withOpacity(0.3),
+                                        color: const Color(0xFFFF5722).withValues(alpha: 0.3),
                                         width: 1,
                                       ),
                                     ),
@@ -616,7 +920,6 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // Action Buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
