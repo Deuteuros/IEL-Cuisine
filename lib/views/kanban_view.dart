@@ -6,7 +6,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/order.dart';
 import '../providers/order_provider.dart';
 import '../providers/network_provider.dart';
+import '../providers/theme_provider.dart';
+import '../providers/wakelock_provider.dart';
+import '../providers/sync_inbox_provider.dart';
 import '../services/network_client_service.dart';
+import '../ui/widgets/cast_button_widget.dart';
 import 'network_connection_view.dart';
 
 class KanbanView extends ConsumerWidget {
@@ -20,10 +24,20 @@ class KanbanView extends ConsumerWidget {
     final enCoursOrders = orders.where((o) => o.status == OrderStatus.enCours).toList();
     final faitOrders = orders.where((o) => o.status == OrderStatus.fait).toList();
 
+    final surfaceColor = Theme.of(context).colorScheme.surface;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+
+    ref.read(wakelockProvider);
+
+    ref.listen(syncInboxProvider, (prev, next) {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(syncInboxProvider).initialize();
+    });
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F12),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF16161E),
+        backgroundColor: surfaceColor,
         elevation: 0,
         title: Row(
           children: [
@@ -44,7 +58,7 @@ class KanbanView extends ConsumerWidget {
               style: GoogleFonts.outfit(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: onSurface,
               ),
             ),
           ],
@@ -83,6 +97,18 @@ class KanbanView extends ConsumerWidget {
               );
             },
           ),
+          Consumer(
+            builder: (context, ref, child) {
+              final themeMode = ref.watch(themeProvider);
+              final isDark = themeMode == ThemeMode.dark;
+              return IconButton(
+                icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+                tooltip: isDark ? 'Mode clair' : 'Mode sombre',
+                onPressed: () => ref.read(themeProvider.notifier).toggle(),
+              );
+            },
+          ),
+          const CastButtonWidget(),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: ElevatedButton.icon(
@@ -108,7 +134,45 @@ class KanbanView extends ConsumerWidget {
           ),
         ],
       ),
-      body: Row(
+      body: orders.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.restaurant, size: 80,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Tsy misy kaomandy',
+                    style: GoogleFonts.outfit(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Aucune commande en cours',
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton.icon(
+                    onPressed: () => ref.read(orderProvider.notifier).loadDemoOrders(),
+                    icon: const Icon(Icons.play_arrow, color: Colors.white),
+                    label: Text(
+                      'Charger données de démo',
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF5722),
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : Row(
         children: [
           Expanded(
             child: _KanbanColumn(
@@ -213,12 +277,12 @@ class _KanbanColumnState extends ConsumerState<_KanbanColumn> {
           decoration: BoxDecoration(
             color: _isDraggingOver
                 ? widget.headerColor.withValues(alpha: 0.08)
-                : const Color(0xFF16161E),
+                : Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: _isDraggingOver
                   ? widget.headerColor
-                  : const Color(0xFF2C2C35),
+                  : Theme.of(context).colorScheme.outlineVariant,
               width: _isDraggingOver ? 2.0 : 1.0,
             ),
           ),
@@ -253,7 +317,7 @@ class _KanbanColumnState extends ConsumerState<_KanbanColumn> {
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 1.2,
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ],
@@ -275,7 +339,7 @@ class _KanbanColumnState extends ConsumerState<_KanbanColumn> {
                   ],
                 ),
               ),
-              const Divider(color: Color(0xFF2C2C35), height: 1),
+              Divider(color: Theme.of(context).colorScheme.outlineVariant, height: 1),
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.all(12),
@@ -379,14 +443,7 @@ class _OrderCardState extends ConsumerState<_OrderCard> {
           child: Ink(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFF252530),
-                  const Color(0xFF1E1E26),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: Theme.of(context).colorScheme.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: timerColor.withValues(alpha: 0.5),
@@ -412,7 +469,7 @@ class _OrderCardState extends ConsumerState<_OrderCard> {
                           Icon(
                             Icons.table_restaurant,
                             size: 18,
-                            color: Colors.grey.shade400,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 8),
                           Flexible(
@@ -422,7 +479,7 @@ class _OrderCardState extends ConsumerState<_OrderCard> {
                               style: GoogleFonts.outfit(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                           ),
@@ -478,7 +535,7 @@ class _OrderCardState extends ConsumerState<_OrderCard> {
             width: MediaQuery.of(context).size.width / 3.5,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFF2C2C3C),
+              color: Theme.of(context).colorScheme.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: const Color(0xFFE64A19),
@@ -501,15 +558,15 @@ class _OrderCardState extends ConsumerState<_OrderCard> {
                   style: GoogleFonts.outfit(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     decoration: TextDecoration.none,
                   ),
                 ),
                 const SizedBox(height: 8),
                 ...widget.order.items.take(3).map((item) => Text(
                       '${item.quantity}x ${item.name}',
-                      style: const TextStyle(
-                        color: Colors.white70,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         decoration: TextDecoration.none,
                         fontSize: 13,
                       ),
@@ -577,7 +634,7 @@ class _OrderCardState extends ConsumerState<_OrderCard> {
       background: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: Colors.grey.shade700,
+          color: Theme.of(context).colorScheme.outline,
           borderRadius: BorderRadius.circular(12),
         ),
         alignment: Alignment.centerLeft,
@@ -587,7 +644,7 @@ class _OrderCardState extends ConsumerState<_OrderCard> {
       secondaryBackground: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: Colors.grey.shade700,
+          color: Theme.of(context).colorScheme.outline,
           borderRadius: BorderRadius.circular(12),
         ),
         alignment: Alignment.centerRight,
@@ -628,7 +685,7 @@ class _OrderCardState extends ConsumerState<_OrderCard> {
                   style: GoogleFonts.outfit(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -677,7 +734,7 @@ class _OrderCardState extends ConsumerState<_OrderCard> {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Mombamomba ny kaomandy',
-      barrierColor: Colors.black.withValues(alpha: 0.7),
+      barrierColor: Theme.of(context).colorScheme.scrim.withValues(alpha: 0.7),
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (context, anim1, anim2) {
         return _OrderDetailsDialog(order: order);
@@ -746,10 +803,10 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
         margin: const EdgeInsets.symmetric(horizontal: 40),
         constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E26),
+          color: Theme.of(context).colorScheme.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: const Color(0xFF353545),
+            color: Theme.of(context).colorScheme.outlineVariant,
             width: 1.5,
           ),
           boxShadow: [
@@ -778,7 +835,7 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
                           children: [
                             Icon(
                               Icons.table_restaurant,
-                              color: Colors.grey.shade400,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               size: 24,
                             ),
                             const SizedBox(width: 8),
@@ -787,7 +844,7 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
                               style: GoogleFonts.outfit(
                                 fontSize: 28,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                           ],
@@ -828,11 +885,11 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
                       "Voaray tamin'ny ${widget.order.createdAt.hour.toString().padLeft(2, '0')}:${widget.order.createdAt.minute.toString().padLeft(2, '0')}",
                       style: GoogleFonts.outfit(
                         fontSize: 14,
-                        color: Colors.grey,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Divider(color: Color(0xFF353545), height: 1),
+                    Divider(color: Theme.of(context).colorScheme.outlineVariant, height: 1),
                     const SizedBox(height: 16),
                     Expanded(
                       child: ListView.builder(
@@ -843,7 +900,7 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF252530),
+                              color: Theme.of(context).colorScheme.surfaceContainer,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Column(
@@ -867,14 +924,14 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
-                                      child: Text(
-                                        item.name,
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
+                                        child: Text(
+                                          item.name,
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w600,
+                                            color: Theme.of(context).colorScheme.onSurface,
+                                          ),
                                         ),
-                                      ),
                                     ),
                                   ],
                                 ),
@@ -928,7 +985,7 @@ class _OrderDetailsDialogState extends State<_OrderDetailsDialog> {
                           child: Text(
                             'Hidio',
                             style: GoogleFonts.outfit(
-                              color: Colors.grey,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

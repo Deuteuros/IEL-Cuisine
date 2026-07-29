@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "fireworks-ai/accounts/fireworks/models/deepseek-v4-flash",
+  "agent": {
+    "build": {
+      "model": "fireworks-ai/accounts/fireworks/models/deepseek-v4-flash",
+      "description": "Implémenteur UI Flutter — reçoit les plans de Antigravity et écrit le code"
+    },
+    "general": {
+      "model": "fireworks-ai/accounts/fireworks/models/glm-5p1"
+    }
+  },
+  "skills": {
+    "paths": [".opencode/skills"]
+  }
+}

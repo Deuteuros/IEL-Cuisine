@@ -1,0 +1,34 @@
+#+TITLE: Review Template — org-srs
+
+* <Nom Fonction>
+:SRS_ALGORITHM: fsrs
+:PROPERTIES:
+:ID:           review--cuisine--<module>--<fonction>
+:COMPREHENSION_LEVEL: medium
+:CHUNK_SIZE:   L2
+:END:
+
+#+begin_src dart
+// Code à review
+#+end_src
+
+** Back
+Explique ici le code en langage simple (Feynman).
+
+Ce que je comprends :
+Ce que je ne comprends pas :
+
+** Agent Report
+(code-feynman)
+- Lacunes de compréhension :
+- Quality issues :
+- Recommandation : ↓ L1 / → L2 / ↑ L3
+
+#+STARTUP: showeverything
+
+Usage:
+1. Copier ce fichier en docs/reviews/<module>/<niveau>-<nom>.org
+2. Mettre le code dans la section #+begin_src
+3. C-c C-c sur :SRS_ALGORITHM: pour valider les propriétés
+4. M-x org-srs-item-create RET card (depuis le heading)
+5. Pour review : C-c r r ou M-x org-srs-review-start

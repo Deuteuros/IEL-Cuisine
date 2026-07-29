@@ -17,8 +17,10 @@ class _NetworkConnectionViewState extends ConsumerState<NetworkConnectionView> {
   @override
   void initState() {
     super.initState();
-    final network = ref.read(networkClientProvider);
-    network.startMdnsDiscovery();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final network = ref.read(networkClientProvider);
+      network.startMdnsDiscovery();
+    });
   }
 
   @override
@@ -32,14 +34,14 @@ class _NetworkConnectionViewState extends ConsumerState<NetworkConnectionView> {
     final networkClient = ref.watch(networkClientProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F12),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF16161E),
-        title: const Text(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text(
           'Tambazotra (Réseau)',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
         elevation: 0,
       ),
       body: ListView(
@@ -49,10 +51,10 @@ class _NetworkConnectionViewState extends ConsumerState<NetworkConnectionView> {
           const SizedBox(height: 32),
 
           if (networkClient.discoveredServers.isNotEmpty) ...[
-            const Text(
+            Text(
               "Serveurs détectés sur le réseau",
               style: TextStyle(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -66,10 +68,10 @@ class _NetworkConnectionViewState extends ConsumerState<NetworkConnectionView> {
             const SizedBox(height: 32),
           ],
 
-          const Text(
+          Text(
             "Adiresy IP an'ny CaisseCash",
             style: TextStyle(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -80,21 +82,21 @@ class _NetworkConnectionViewState extends ConsumerState<NetworkConnectionView> {
             child: TextFormField(
               controller: _ipController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: 'ex: 192.168.1.100',
-                hintStyle: TextStyle(color: Colors.grey.shade600),
-                prefixIcon: const Icon(Icons.wifi_outlined, color: Colors.grey),
+                hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                prefixIcon: Icon(Icons.wifi_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF353545)),
+                  borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF353545)),
+                  borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
                 ),
                 filled: true,
-                fillColor: const Color(0xFF16161E),
+                fillColor: Theme.of(context).colorScheme.surface,
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) return 'Mila adiresy IP';
@@ -172,23 +174,23 @@ class _DiscoveredServerTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: isConnected
             ? Colors.green.withValues(alpha: 0.08)
-            : const Color(0xFF16161E),
+            : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isConnected
               ? Colors.green.withValues(alpha: 0.3)
-              : const Color(0xFF353545),
+              : Theme.of(context).colorScheme.outlineVariant,
         ),
       ),
       child: ListTile(
         leading: Icon(
           isConnected ? Icons.wifi : Icons.wifi_find,
-          color: isConnected ? Colors.green : Colors.grey,
+          color: isConnected ? Colors.green : Theme.of(context).colorScheme.onSurfaceVariant,
         ),
         title: Text(
           server.name,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -196,7 +198,7 @@ class _DiscoveredServerTile extends StatelessWidget {
           '${server.ip}:${server.port}',
           style: TextStyle(
             fontFamily: 'monospace',
-            color: Colors.grey.shade400,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         trailing: isConnected

@@ -1,0 +1,137 @@
+[
+  {
+    "order_id": "demo-001",
+    "table_number": "Table 3",
+    "status": "A_FAIRE",
+    "created_at": "2026-07-29T11:52:00.000",
+    "notes": null,
+    "items": [
+      { "product_name": "Phô Boeuf", "quantity": 2, "notes": "Sans coriandre" },
+      { "product_name": "Bo Bun Poulet", "quantity": 1, "notes": null },
+      { "product_name": "Nems Crevettes", "quantity": 1, "notes": null }
+    ]
+  },
+  {
+    "order_id": "demo-002",
+    "table_number": "Table 8",
+    "status": "A_FAIRE",
+    "created_at": "2026-07-29T11:48:00.000",
+    "notes": null,
+    "items": [
+      { "product_name": "Banh Mi Porc Grillé", "quantity": 2, "notes": "Piment fort à part" },
+      { "product_name": "Raviolis Vapeur (Ha Cao)", "quantity": 1, "notes": null }
+    ]
+  },
+  {
+    "order_id": "demo-003",
+    "table_number": "Table 5",
+    "status": "EN_COURS",
+    "created_at": "2026-07-29T11:42:00.000",
+    "notes": null,
+    "items": [
+      { "product_name": "Phô Poulet", "quantity": 1, "notes": null },
+      { "product_name": "Riz Loc Lac", "quantity": 1, "notes": "Bien cuit" }
+    ]
+  },
+  {
+    "order_id": "demo-004",
+    "table_number": "Table 12",
+    "status": "EN_COURS",
+    "created_at": "2026-07-29T11:35:00.000",
+    "notes": null,
+    "items": [
+      { "product_name": "Bô Bun Tofu", "quantity": 2, "notes": "Sauce soja uniquement" },
+      { "product_name": "Rouleaux de Printemps", "quantity": 2, "notes": null }
+    ]
+  },
+  {
+    "order_id": "demo-005",
+    "table_number": "Table 2",
+    "status": "FAIT",
+    "created_at": "2026-07-29T11:30:00.000",
+    "notes": null,
+    "items": [
+      { "product_name": "Phô Boeuf Spécial", "quantity": 3, "notes": null }
+    ]
+  },
+  {
+    "order_id": "demo-006",
+    "table_number": "Table 7",
+    "status": "A_FAIRE",
+    "created_at": "2026-07-29T11:55:00.000",
+    "notes": "Anniversaire - prévoir bougie",
+    "items": [
+      { "product_name": "Canard Laqué", "quantity": 1, "notes": null },
+      { "product_name": "Riz Cantonais", "quantity": 2, "notes": null },
+      { "product_name": "Soupe Won Ton", "quantity": 2, "notes": null }
+    ]
+  },
+  {
+    "order_id": "demo-007",
+    "table_number": "Table 1",
+    "status": "A_FAIRE",
+    "created_at": "2026-07-29T11:58:00.000",
+    "notes": null,
+    "items": [
+      { "product_name": "Phô Spécial Fruits de Mer", "quantity": 1, "notes": "Allergie crevettes" },
+      { "product_name": "Nems Poulet", "quantity": 2, "notes": null }
+    ]
+  },
+  {
+    "order_id": "demo-008",
+    "table_number": "Table 10",
+    "status": "EN_COURS",
+    "created_at": "2026-07-29T11:40:00.000",
+    "notes": null,
+    "items": [
+      { "product_name": "Bun Thit Nuong", "quantity": 2, "notes": null },
+      { "product_name": "Rouleaux Impériaux", "quantity": 1, "notes": null }
+    ]
+  },
+  {
+    "order_id": "demo-009",
+    "table_number": "Table 6",
+    "status": "EN_COURS",
+    "created_at": "2026-07-29T11:38:00.000",
+    "notes": null,
+    "items": [
+      { "product_name": "Riz Parfumé", "quantity": 1, "notes": null },
+      { "product_name": "Boeuf Lok Lak", "quantity": 1, "notes": "Sauce à part" },
+      { "product_name": "Légumes Sautés", "quantity": 1, "notes": null }
+    ]
+  },
+  {
+    "order_id": "demo-010",
+    "table_number": "Table 4",
+    "status": "FAIT",
+    "created_at": "2026-07-29T11:20:00.000",
+    "notes": null,
+    "items": [
+      { "product_name": "Soupe Pho Ga", "quantity": 2, "notes": null },
+      { "product_name": "Salade de Papaye", "quantity": 1, "notes": "Sans cacahuètes" }
+    ]
+  },
+  {
+    "order_id": "demo-011",
+    "table_number": "Table 9",
+    "status": "A_FAIRE",
+    "created_at": "2026-07-29T12:00:00.000",
+    "notes": null,
+    "items": [
+      { "product_name": "Porc Caramélisé", "quantity": 1, "notes": null },
+      { "product_name": "Riz Gluant", "quantity": 1, "notes": null },
+      { "product_name": "Beignets Crevettes", "quantity": 2, "notes": null }
+    ]
+  },
+  {
+    "order_id": "demo-012",
+    "table_number": "Table 11",
+    "status": "A_FAIRE",
+    "created_at": "2026-07-29T12:02:00.000",
+    "notes": "Table prioritaire - client VIP",
+    "items": [
+      { "product_name": "Menu Dégustation", "quantity": 2, "notes": "Sans MSG" },
+      { "product_name": "Thé au Jasmin", "quantity": 2, "notes": null }
+    ]
+  }
+]

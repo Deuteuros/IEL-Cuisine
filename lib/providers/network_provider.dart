@@ -17,7 +17,5 @@ final networkClientProvider = ChangeNotifierProvider<NetworkClientService>((ref)
     },
   );
 
-  service.startMdnsDiscovery();
-
   return service;
 });

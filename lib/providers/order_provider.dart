@@ -1,8 +1,10 @@
+import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/order.dart';
 
 class OrderNotifier extends StateNotifier<List<OrderModel>> {
-  OrderNotifier() : super(_generateInitialMockData());
+  OrderNotifier() : super([]);
 
   void moveOrder(String orderId, OrderStatus newStatus) {
     state = state.map((order) {
@@ -54,65 +56,42 @@ class OrderNotifier extends StateNotifier<List<OrderModel>> {
     state = [...state, newOrder];
   }
 
-  static List<OrderModel> _generateInitialMockData() {
+  Future<void> loadDemoOrders() async {
+    final jsonString = await rootBundle.loadString('assets/samples/kitchen_demo_orders.json');
+    final List<dynamic> jsonList = jsonDecode(jsonString) as List<dynamic>;
     final now = DateTime.now();
-    return [
-      OrderModel(
-        id: '1',
-        tableNumber: 'Table 3',
-        status: OrderStatus.aFaire,
-        items: const [
-          OrderItem(name: 'Phô Boeuf', quantity: 2, notes: 'Sans coriandre'),
-          OrderItem(name: 'Bo Bun Poulet', quantity: 1),
-          OrderItem(name: 'Nems Crevettes', quantity: 1),
-        ],
-        createdAt: now.subtract(const Duration(minutes: 8)),
-        updatedAt: now.subtract(const Duration(minutes: 8)),
-      ),
-      OrderModel(
-        id: '2',
-        tableNumber: 'Table 8',
-        status: OrderStatus.aFaire,
-        items: const [
-          OrderItem(name: 'Banh Mi Porc Grillé', quantity: 2, notes: 'Piment fort à part'),
-          OrderItem(name: 'Raviolis Vapeur (Ha Cao)', quantity: 1),
-        ],
-        createdAt: now.subtract(const Duration(minutes: 12)),
-        updatedAt: now.subtract(const Duration(minutes: 12)),
-      ),
-      OrderModel(
-        id: '3',
-        tableNumber: 'Table 5',
-        status: OrderStatus.enCours,
-        items: const [
-          OrderItem(name: 'Phô Poulet', quantity: 1),
-          OrderItem(name: 'Riz Loc Lac', quantity: 1, notes: 'Bien cuit'),
-        ],
-        createdAt: now.subtract(const Duration(minutes: 18)),
-        updatedAt: now.subtract(const Duration(minutes: 10)),
-      ),
-      OrderModel(
-        id: '4',
-        tableNumber: 'Table 12',
-        status: OrderStatus.enCours,
-        items: const [
-          OrderItem(name: 'Bô Bun Tofu', quantity: 2, notes: 'Sauce soja uniquement'),
-          OrderItem(name: 'Rouleaux de Printemps', quantity: 2),
-        ],
-        createdAt: now.subtract(const Duration(minutes: 25)),
-        updatedAt: now.subtract(const Duration(minutes: 15)),
-      ),
-      OrderModel(
-        id: '5',
-        tableNumber: 'Table 2',
-        status: OrderStatus.fait,
-        items: const [
-          OrderItem(name: 'Phô Boeuf Spécial', quantity: 3),
-        ],
-        createdAt: now.subtract(const Duration(minutes: 30)),
-        updatedAt: now.subtract(const Duration(minutes: 5)),
-      ),
-    ];
+
+    final orders = jsonList.map((json) {
+      final createdAtStr = json['created_at'] as String;
+      final createdAt = DateTime.tryParse(createdAtStr) ?? now;
+
+      return OrderModel(
+        id: json['order_id'] as String,
+        tableNumber: json['table_number'] as String,
+        status: _parseStatus(json['status'] as String? ?? 'A_FAIRE'),
+        items: (json['items'] as List<dynamic>).map((item) => OrderItem(
+          name: item['product_name'] as String,
+          quantity: (item['quantity'] as num).toInt(),
+          notes: item['notes'] as String?,
+        )).toList(),
+        createdAt: createdAt,
+        updatedAt: createdAt,
+        notes: json['notes'] as String?,
+      );
+    }).toList();
+
+    state = orders;
+  }
+
+  OrderStatus _parseStatus(String status) {
+    switch (status) {
+      case 'EN_COURS':
+        return OrderStatus.enCours;
+      case 'FAIT':
+        return OrderStatus.fait;
+      default:
+        return OrderStatus.aFaire;
+    }
   }
 }
 
