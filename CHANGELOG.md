@@ -11,12 +11,14 @@ et le projet suit [Semantic Versioning](https://semver.org/).
 
 - **Multi-thème (Jour/Nuit)** : Basculement fluide entre mode clair et sombre via un bouton dans l'AppBar. Toutes les vues s'adaptent dynamiquement (Kanban, NetworkConnection, Dialogues).
 - **Clean State & Données de Démo** : Le Kanban démarre vide. 12 commandes fictives exportées dans `assets/samples/kitchen_demo_orders.json`. Bouton *"Charger données de démo"* disponible.
-- **Déport Chromecast / Android TV (préparation)** : Architecture Cast via MethodChannel (`CastService`), bouton Cast overlay dans l'AppBar, vue TV épurée (`CastKanbanReceiver`).
+- **Déport Chromecast / Android TV** : Architecture Cast via MethodChannel (`CastService`), bouton Cast overlay dans l'AppBar, vue TV épurée (`CastKanbanReceiver`). Canal natif Android implémenté dans `MainActivity.kt` (`play-services-cast-framework` + `androidx.mediarouter`), découverte automatique des appareils et diffusion de la vue Kanban sur l'écran TV.
 - **Maintien d'écran actif** : Intégration de `wakelock_plus` pour éviter la mise en veille en cuisine.
 - **FileWatcher Inbox (Sync)** : Surveillance du dossier `sync_queue/inbox/` via `Directory.watch()` (inotify). Traitement automatique des fichiers JSON de commandes et déplacement vers `processed/`.
 
 ### Corrections
 
+- Signature `SessionManagerListener` alignée sur le SDK Cast 21.5 (`CastSession` dans `com.google.android.gms.cast.framework`, ajout de `onSessionStarting`, suppression de `onSessionSuspendedReasonChanged`).
+- Remplacement de la constante `CastMediaControlIntent.CATEGORY_CAST` (retirée du SDK) par la catégorie Cast standard et ajout du `MediaRouteSelector` requis par `MediaRouter.addCallback`.
 - Mauvais timing d'initialisation mDNS déplacé dans `addPostFrameCallback`.
 - Couleurs d'interface dynamiques via `Theme.of(context).colorScheme` au lieu de valeurs hard-codées.
 - Nom de l'application Android mis à jour : "Lakozia".

@@ -9,9 +9,7 @@ import '../providers/network_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/wakelock_provider.dart';
 import '../providers/sync_inbox_provider.dart';
-import '../services/network_client_service.dart';
 import '../ui/widgets/cast_button_widget.dart';
-import 'network_connection_view.dart';
 
 class KanbanView extends ConsumerWidget {
   const KanbanView({super.key});
@@ -66,39 +64,6 @@ class KanbanView extends ConsumerWidget {
         actions: [
           Consumer(
             builder: (context, ref, child) {
-              final network = ref.watch(networkClientProvider);
-              final Color statusColor;
-              final IconData statusIcon;
-              switch (network.status) {
-                case ConnectionStatus.connected:
-                  statusColor = Colors.green;
-                  statusIcon = Icons.wifi;
-                  break;
-                case ConnectionStatus.connecting:
-                case ConnectionStatus.searching:
-                  statusColor = Colors.orange;
-                  statusIcon = Icons.wifi_find;
-                  break;
-                case ConnectionStatus.error:
-                  statusColor = Colors.red;
-                  statusIcon = Icons.wifi_off;
-                  break;
-                default:
-                  statusColor = Colors.grey;
-                  statusIcon = Icons.wifi_off_outlined;
-              }
-              return IconButton(
-                icon: Icon(statusIcon, color: statusColor),
-                tooltip: 'Tambazotra (Réseau)',
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const NetworkConnectionView()),
-                ),
-              );
-            },
-          ),
-          Consumer(
-            builder: (context, ref, child) {
               final themeMode = ref.watch(themeProvider);
               final isDark = themeMode == ThemeMode.dark;
               return IconButton(
@@ -109,29 +74,6 @@ class KanbanView extends ConsumerWidget {
             },
           ),
           const CastButtonWidget(),
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: ElevatedButton.icon(
-              onPressed: () {
-                ref.read(orderProvider.notifier).addMockOrder();
-              },
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: Text(
-                'Kaomandy Vaovao',
-                style: GoogleFonts.outfit(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF5722),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
       body: orders.isEmpty

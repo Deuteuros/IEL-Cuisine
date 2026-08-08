@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="cast_options" tools:ignore="UnusedResources">
+        <cast_options>
+            <receiver_application_id>000000000000</receiver_application_id>
+            <enable_session_logger>true</enable_session_logger>
+        </cast_options>
+    </string>
+</resources>

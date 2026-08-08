@@ -1,5 +1,7 @@
 # Plan d'Exécution : Support Multi-thème (Jour/Nuit)
 
+Statut: ✅ Terminé (Implémenté par OpenCode le 2026-07-29 — commit `03c0bb5`)
+
 Ce plan décrit l'implémentation de la fonctionnalité de basculement entre le mode Jour (Light) et le mode Nuit (Dark) pour l'application Cuisine Lakozia.
 
 ## Proposed Changes
